@@ -32,66 +32,60 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Login "),
-        backgroundColor: Colors.cyanAccent,
+    return FutureBuilder(
+      future: Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
       ),
-      body: FutureBuilder(
-        future: Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        ),
-        builder: (context, snapshot) {
-          switch (snapshot.connectionState) {
-            case ConnectionState.done:
-              return Column(
-                children: [
-                  TextField(
-                    controller: _email,
+      builder: (context, snapshot) {
+        switch (snapshot.connectionState) {
+          case ConnectionState.done:
+            return Column(
+              children: [
+                TextField(
+                  controller: _email,
+                  enableSuggestions: false,
+                  autocorrect: false,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter Your E-mail here',
+                  ),
+                ),
+                TextField(
+                    controller: _password,
+                    obscureText: true,
                     enableSuggestions: false,
                     autocorrect: false,
-                    keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      hintText: 'Enter Your E-mail here',
-                    ),
-                  ),
-                  TextField(
-                      controller: _password,
-                      obscureText: true,
-                      enableSuggestions: false,
-                      autocorrect: false,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter Your Password here',
-                      )),
-                  TextButton(
-                    onPressed: () async {
-                      final email = _email.text;
-                      final password = _password.text;
-                      try {
-                        final usercredential = await FirebaseAuth.instance
-                            .signInWithEmailAndPassword(
-                                email: email, password: password);
-                        print(usercredential);
-                      } on FirebaseAuthException catch (e) {
-                        if (e.code == 'user-not-found') {
-                          print("User not Found");
-                        } else if (e.code == 'wrong-password') {
-                          print("Wrong Password");
-                        }
+                      hintText: 'Enter Your Password here',
+                    )),
+                TextButton(
+                  onPressed: () async {
+                    final email = _email.text;
+                    final password = _password.text;
+                    try {
+                      final usercredential = await FirebaseAuth.instance
+                          .signInWithEmailAndPassword(
+                          email: email, password: password);
+                      print(usercredential);
+                    } on FirebaseAuthException catch (e) {
+                      if (e.code == 'user-not-found') {
+                        print("User not Found");
+                      } else if (e.code == 'wrong-password') {
+                        print("Wrong Password");
                       }
-                    },
-                    child: const Text(
-                      "Login",
-                      style: TextStyle(fontSize: 25, color: Colors.amber),
-                    ),
+                    }
+                  },
+                  child: const Text(
+                    "Login",
+                    style: TextStyle(fontSize: 25, color: Colors.amber),
                   ),
-                ],
-              );
-            default:
-              return const Text("Loading.....");
-          }
-        },
-      ),
+                ),
+              ],
+            );
+          default:
+            return const Text("Loading.....");
+        }
+      },
     );
   }
 }
