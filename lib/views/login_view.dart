@@ -1,8 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-
-import '../firebase_options.dart';
+import 'dart:developer' as devtools show log;
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -34,7 +32,7 @@ class _LoginViewState extends State<LoginView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Login"),
+        title: const Text("Login"),
         backgroundColor: Colors.blueGrey,
       ),
       body: Column(
@@ -61,15 +59,19 @@ class _LoginViewState extends State<LoginView> {
               final email = _email.text;
               final password = _password.text;
               try {
-                final usercredential = await FirebaseAuth.instance
-                    .signInWithEmailAndPassword(
-                    email: email, password: password);
-                print(usercredential);
+                await FirebaseAuth.instance.signInWithEmailAndPassword(
+                  email: email,
+                  password: password,
+                );
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/notes/',
+                  (route) => false,
+                );
               } on FirebaseAuthException catch (e) {
                 if (e.code == 'user-not-found') {
-                  print("User not Found");
+                  devtools.log("User not Found");
                 } else if (e.code == 'wrong-password') {
-                  print("Wrong Password");
+                  devtools.log("Wrong Password");
                 }
               }
             },
@@ -78,10 +80,12 @@ class _LoginViewState extends State<LoginView> {
               style: TextStyle(fontSize: 25, color: Colors.indigoAccent),
             ),
           ),
-          TextButton(onPressed: (){
-              Navigator.of(context).pushNamedAndRemoveUntil('/register/', (route) => false);
-          },
-              child: Text('Not registered yet? Register here!'))
+          TextButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/register/', (route) => false);
+              },
+              child: const Text('Not registered yet? Register here!'))
         ],
       ),
     );
