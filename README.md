@@ -5,6 +5,7 @@ Simple Notes app In building that links with an email account.
 ->Register Page
 ->Login Page
 ->Email Verification
+->LogOut View
 
 ### Technologies Used:
 ->Flutter for UI/UX
