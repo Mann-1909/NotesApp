@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:first/constants/routes.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
+
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
 
@@ -58,9 +60,11 @@ class _RegisterViewState extends State<RegisterView> {
               final email = _email.text;
               final password = _password.text;
               try {
-                final usercredential = await FirebaseAuth.instance
-                    .createUserWithEmailAndPassword(
-                    email: email, password: password);
+                final usercredential =
+                    await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                  email: email,
+                  password: password,
+                );
                 devtools.log(usercredential.toString());
               } on FirebaseAuthException catch (e) {
                 if (e.code == 'weak-password') {
@@ -77,9 +81,12 @@ class _RegisterViewState extends State<RegisterView> {
               style: TextStyle(fontSize: 25, color: Colors.indigoAccent),
             ),
           ),
-          TextButton(onPressed: (){
-            Navigator.of(context).pushNamedAndRemoveUntil('/login/', (route) => false);
-          }, child:const Text('Already registered? Go back to Login Page!'))
+          TextButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil(loginRoute, (route) => false);
+              },
+              child: const Text('Already registered? Go back to Login Page!'))
         ],
       ),
     );
