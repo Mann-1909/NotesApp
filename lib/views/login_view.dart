@@ -14,6 +14,7 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   late final TextEditingController _email;
   late final TextEditingController _password;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -61,18 +62,22 @@ class _LoginViewState extends State<LoginView> {
               final email = _email.text;
               final password = _password.text;
               try {
-                await FirebaseAuth.instance.signInWithEmailAndPassword(
-                  email: email,
-                  password: password,
-                );
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  notesRoute,
-                  (route) => false,
-                );
+                await FirebaseAuth.instance
+                    .signInWithEmailAndPassword(email: email, password: password);
+                final user = FirebaseAuth.instance.currentUser;
+                if (user?.emailVerified ?? false) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    notesRoute,
+                    (route) => false,
+                  );
+                } else {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    verifyemailRoute,
+                    (route) => false,
+                  );
+                }
               } on FirebaseAuthException catch (e) {
-                print(e.code);
                 if (e.code == 'user-not-found') {
-                  print(e.code);
                   await showErrorDialog(context, "User Not Found");
                 } else if (e.code == 'wrong-password') {
                   await showErrorDialog(context, "Wrong Password");
@@ -101,4 +106,3 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 }
-
