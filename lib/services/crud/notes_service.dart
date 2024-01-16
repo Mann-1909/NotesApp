@@ -1,4 +1,6 @@
-import 'dart:js_util';
+// import 'dart:js_util';
+
+import 'dart:async';
 
 import 'package:first/services/crud/crud_exceptions.dart';
 import 'package:flutter/cupertino.dart';
@@ -9,48 +11,92 @@ import 'package:path/path.dart' show join;
 
 class NotesService {
   Database? _db;
+  List<DatabaseNote> _notes=[];
+  static final NotesService _shared=NotesService._sharedInstance();
+  NotesService._sharedInstance();
+  factory NotesService()=>_shared;
+  final _notesStreamController=StreamController<List<DatabaseNote>>.broadcast();
+  Stream<List<DatabaseNote>> get allNotes=>_notesStreamController.stream;
+  Future<DatabaseUser> getOrCreateUser({required String email}) async{
+    try{
+    final user=await getUser(email: email);
+    return user;
+
+    }on CouldNotFindUser{
+      final createdUser=await createUser(email: email);
+      return createdUser;
+    }
+    catch(e){
+      rethrow;
+    }
+  }
+  Future<void> _cacheNotes() async{
+    final allNotes=await getAllNotes();
+    _notes=allNotes.toList();
+    _notesStreamController.add(_notes);
+  }
+
   Future<DatabaseNote> updateNote({required DatabaseNote note,required String text}) async{
-    final db=_getDatabaseOrThrow();
+    await _ensureDbIsOpen();final db=_getDatabaseOrThrow();
     await getNote(id: note.id);
     final updatesCount=await db.update(noteTable, {textColumn:text,isSyncedWithCloudColumn:0 });
     if(updatesCount==0){
       throw CouldNotUpdateNote();
     }
     else{
-      return await getNote(id:note.id);
+      final updatedNote= await getNote(id:note.id);
+      _notes.removeWhere((note) => note.id==updatedNote.id);
+      _notes.add(updatedNote);
+      _notesStreamController.add(_notes);
+      return updatedNote;
+
     }
 }
 
-  Future<Iterable<DatabaseNote>> getAllNotes() async {
+  Future<Iterable<DatabaseNote>> getAllNotes() async {await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final notes = await db.query(noteTable);
     return notes.map((noteRow) => DatabaseNote.fromRow(noteRow));
   }
 
-  Future<DatabaseNote> getNote({required int id}) async {
+  Future<DatabaseNote> getNote({required int id}) async {await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final notes = await db.query(noteTable, limit: 1, where: 'id=?', whereArgs: [id]);
     if (notes.isEmpty) {
       throw CouldNotFindNotes();
     } else {
-      return DatabaseNote.fromRow(notes.first);
+
+      final note= DatabaseNote.fromRow(notes.first);
+      _notes.removeWhere((note) => note.id==id);
+      _notes.add(note);
+      _notesStreamController.add(_notes);
+      return note;
     }
   }
 
-  Future<int> deleteAllNotes() async {
+  Future<int> deleteAllNotes() async {await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
-    return await db.delete(noteTable);
+
+    final numberOfDeletions =await db.delete(noteTable);
+    _notes=[];
+    _notesStreamController.add(_notes);
+    return numberOfDeletions;
   }
 
-  Future<void> deleteNote({required int id}) async {
+  Future<void> deleteNote({required int id}) async {await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final deletedCount = await db.delete(noteTable, where: 'id=?', whereArgs: [id]);
     if (deletedCount == 0) {
       throw CouldNotDeleteNote();
+    }else{
+      // final countBefore=_notes.length;
+      _notes.removeWhere((note)=>note.id==id);
+      _notesStreamController.add(_notes);
     }
+    
   }
 
-  Future<DatabaseNote> createNote({required DatabaseUser owner}) async {
+  Future<DatabaseNote> createNote({required DatabaseUser owner}) async {await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final dbUser = await getUser(email: owner.email);
     if (dbUser != owner) {
@@ -60,10 +106,12 @@ class NotesService {
     final noteId = await db
         .insert(noteTable, {userIdColumn: owner.id, textColumn: text, isSyncedWithCloudColumn: 1});
     final note = DatabaseNote(id: noteId, userId: owner.id, text: text, isSyncedWithCloud: true);
+    _notes.add(note);
+    _notesStreamController.add(_notes);
     return note;
   }
 
-  Future<DatabaseUser> getUser({required String email}) async {
+  Future<DatabaseUser> getUser({required String email}) async {await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final results = await db.query(
       userTable,
@@ -79,6 +127,7 @@ class NotesService {
   }
 
   Future<void> deleteUser({required String email}) async {
+    await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final deletedCount = await db.delete(
       userTable,
@@ -91,6 +140,7 @@ class NotesService {
   }
 
   Future<DatabaseUser> createUser({required String email}) async {
+    await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final results = await db.query(
       userTable,
@@ -132,8 +182,17 @@ class NotesService {
       await db.execute(createUserTable);
 
       await db.execute(createNoteTable);
+      await _cacheNotes();
     } on MissingPlatformDirectoryException {
       throw UnableToGetDocumentsDirectory();
+    }
+  }
+
+  Future<void> _ensureDbIsOpen() async{
+    try{
+      await open();
+    }on DatabaseAlreadyOpenException{
+      // empty
     }
   }
 
